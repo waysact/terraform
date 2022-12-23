@@ -28,6 +28,21 @@ const (
 	CanNotApply
 )
 
+type JSONLogType string
+type JSONLog map[string]interface{}
+
+const (
+	LogVersion         JSONLogType = "version"
+	LogDiagnostic      JSONLogType = "diagnostic"
+	LogPlannedChange   JSONLogType = "planned_change"
+	LogRefreshStart    JSONLogType = "refresh_start"
+	LogRefreshComplete JSONLogType = "refresh_complete"
+	LogApplyStart      JSONLogType = "apply_start"
+	LogApplyComplete   JSONLogType = "apply_complete"
+	LogChangeSummary   JSONLogType = "change_summary"
+	LogOutputs         JSONLogType = "outputs"
+)
+
 type Plan struct {
 	PlanFormatVersion  string                     `json:"plan_format_version"`
 	OutputChanges      map[string]jsonplan.Change `json:"output_changes"`
@@ -255,6 +270,34 @@ func (r Renderer) RenderHumanPlan(plan Plan, mode plans.Mode, opts ...RendererOp
 	}
 }
 
+func (r Renderer) RenderLog(log JSONLog) {
+	msg, ok := log["@message"].(string)
+	if !ok {
+		return
+	}
+
+	switch JSONLogType(log["type"].(string)) {
+	case LogApplyStart, LogApplyComplete, LogRefreshStart, LogRefreshComplete:
+		msg = fmt.Sprintf("[bold]%s[reset]", msg)
+		r.Streams.Print(r.Colorize.Color(msg))
+		r.Streams.Print("\n")
+	case LogDiagnostic:
+		// TODO
+	case LogChangeSummary:
+		// We will only render the apply change summary since the renderer
+		// generates a plan change summary for us
+		if strings.Contains(msg, "Plan") {
+			return
+		}
+
+		msg = fmt.Sprintf("[bold][green]%s[reset]", msg)
+		// TODO: Clean this up, was approximating the spacing using my eyes.
+		r.Streams.Print("\n")
+		r.Streams.Print(r.Colorize.Color(msg))
+		r.Streams.Print("\n\n")
+	}
+}
+
 func (r Renderer) renderHumanDiffOutputs(outputs map[string]computed.Diff) string {
 	var rendered []string
 
@@ -357,10 +400,6 @@ func (r Renderer) renderHumanDiff(diff diff, cause string) (string, bool) {
 	buf.WriteString(r.Colorize.Color(resourceChangeComment(diff.change, action, cause)))
 	buf.WriteString(fmt.Sprintf("%s %s %s", r.Colorize.Color(format.DiffActionSymbol(action)), resourceChangeHeader(diff.change), diff.diff.RenderHuman(0, computed.NewRenderHumanOpts(r.Colorize))))
 	return buf.String(), true
-}
-
-func (r Renderer) RenderLog(message map[string]interface{}) {
-	panic("not implemented")
 }
 
 func resourceChangeComment(resource jsonplan.ResourceChange, action plans.Action, changeCause string) string {
