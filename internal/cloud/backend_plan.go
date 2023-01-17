@@ -366,7 +366,7 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 	// Since the plan output is not read from the streamed logs and instead fetched
 	// from the redacted output endpoint, we need to defer any logs such that the
 	// plan output is rendered *first* before we write any subsequent logs after the plan output.
-	deferredLogs := []jsonformat.JSONLog{}
+	deferredLogs := []*jsonformat.JSONLog{}
 
 	// This variable helps us track the first instance we encounter a log of type plan_output.
 	// When the plan has started, we should be deferring subsequent logs until after the plan
@@ -391,8 +391,8 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 			}
 
 			if next || len(line) > 0 {
-				log := make(jsonformat.JSONLog)
-				if err := json.Unmarshal(line, &log); err != nil || log == nil {
+				log := &jsonformat.JSONLog{}
+				if err := json.Unmarshal(line, log); err != nil || log == nil {
 					// If we can not parse the line as JSON, we will simply
 					// print the line. This maintains backwards compatibility for
 					// users who do not wish to enable structured output in their
@@ -401,18 +401,17 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 					continue
 				}
 
-				logType := jsonformat.JSONLogType(log["type"].(string))
-
 				// We'll defer any log during a plan operation that is not
-				// plan output.
-				if planStarted && logType != jsonformat.LogPlannedChange {
+				// plan output or outputs logs
+				if planStarted && log.Type != jsonformat.LogPlannedChange &&
+					log.Type != jsonformat.LogOutputs {
 					deferredLogs = append(deferredLogs, log)
 					continue
 				}
 
 				// If the log is plan output, we will indicate the plan has
 				// started and continue the loop.
-				if logType == jsonformat.LogPlannedChange {
+				if log.Type == jsonformat.LogPlannedChange {
 					planStarted = true
 					continue
 				}

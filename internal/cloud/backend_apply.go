@@ -194,8 +194,8 @@ func (b *Cloud) renderApplyLogs(ctx context.Context, run *tfe.Run) error {
 			}
 
 			if next || len(line) > 0 {
-				log := make(jsonformat.JSONLog)
-				if err := json.Unmarshal(line, &log); err != nil || log == nil {
+				log := &jsonformat.JSONLog{}
+				if err := json.Unmarshal(line, log); err != nil || log == nil {
 					// If we can not parse the line as JSON, we will simply
 					// print the line. This maintains backwards compatibility for
 					// users who do not wish to enable structured output in their

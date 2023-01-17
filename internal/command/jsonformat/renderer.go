@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform/internal/command/jsonformat/computed/renderers"
 	"github.com/hashicorp/terraform/internal/command/jsonplan"
 	"github.com/hashicorp/terraform/internal/command/jsonprovider"
+	viewsjson "github.com/hashicorp/terraform/internal/command/views/json"
 	"github.com/hashicorp/terraform/internal/plans"
 	"github.com/hashicorp/terraform/internal/terminal"
 )
@@ -29,7 +30,13 @@ const (
 )
 
 type JSONLogType string
-type JSONLog map[string]interface{}
+
+type JSONLog struct {
+	Message    string                `json:"@message"`
+	Type       JSONLogType           `json:"type"`
+	Diagnostic *viewsjson.Diagnostic `json:"diagnostic"`
+	Outputs    viewsjson.Outputs     `json:"outputs"`
+}
 
 const (
 	LogVersion         JSONLogType = "version"
@@ -270,31 +277,30 @@ func (r Renderer) RenderHumanPlan(plan Plan, mode plans.Mode, opts ...RendererOp
 	}
 }
 
-func (r Renderer) RenderLog(log JSONLog) {
-	msg, ok := log["@message"].(string)
-	if !ok {
-		return
-	}
-
-	switch JSONLogType(log["type"].(string)) {
+func (r Renderer) RenderLog(log *JSONLog) {
+	switch log.Type {
 	case LogApplyStart, LogApplyComplete, LogRefreshStart, LogRefreshComplete:
-		msg = fmt.Sprintf("[bold]%s[reset]", msg)
-		r.Streams.Print(r.Colorize.Color(msg))
-		r.Streams.Print("\n")
+		msg := fmt.Sprintf("[bold]%s[reset]", log.Message)
+		r.Streams.Println(r.Colorize.Color(msg))
+
 	case LogDiagnostic:
+		diag := format.DiagnosticFromJSON(log.Diagnostic, r.Colorize, 78)
+		r.Streams.Print(diag)
+
+	case LogOutputs:
+		r.Streams.Println(r.Colorize.Color("[bold][green]Outputs:[reset]"))
 		// TODO
+
 	case LogChangeSummary:
 		// We will only render the apply change summary since the renderer
 		// generates a plan change summary for us
-		if strings.Contains(msg, "Plan") {
-			return
+		if !strings.Contains(log.Message, "Plan") {
+			msg := fmt.Sprintf("[bold][green]%s[reset]", log.Message)
+			// TODO: Clean this up, was approximating the spacing using my eyes.
+			r.Streams.Print("\n")
+			r.Streams.Print(r.Colorize.Color(msg))
+			r.Streams.Print("\n\n")
 		}
-
-		msg = fmt.Sprintf("[bold][green]%s[reset]", msg)
-		// TODO: Clean this up, was approximating the spacing using my eyes.
-		r.Streams.Print("\n")
-		r.Streams.Print(r.Colorize.Color(msg))
-		r.Streams.Print("\n\n")
 	}
 }
 
