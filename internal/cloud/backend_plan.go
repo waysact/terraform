@@ -401,10 +401,14 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 					continue
 				}
 
+				// We will ignore outputs logs during the plan phase
+				if log.Type == jsonformat.LogOutputs {
+					continue
+				}
+
 				// We'll defer any log during a plan operation that is not
 				// plan output or outputs logs
-				if planStarted && log.Type != jsonformat.LogPlannedChange &&
-					log.Type != jsonformat.LogOutputs {
+				if planStarted && log.Type != jsonformat.LogPlannedChange {
 					deferredLogs = append(deferredLogs, log)
 					continue
 				}
@@ -418,7 +422,10 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 
 				if b.renderer != nil {
 					// Otherwise, we will print the log
-					b.renderer.RenderLog(log)
+					err := b.renderer.RenderLog(log)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -444,7 +451,10 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 
 		// At this point we can resume writing the logs that succeeds the plan output.
 		for _, log := range deferredLogs {
-			b.renderer.RenderLog(log)
+			err := b.renderer.RenderLog(log)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

@@ -12,11 +12,13 @@ import (
 	"github.com/hashicorp/terraform/internal/command/format"
 	"github.com/hashicorp/terraform/internal/command/jsonformat/computed"
 	"github.com/hashicorp/terraform/internal/command/jsonformat/computed/renderers"
+	"github.com/hashicorp/terraform/internal/command/jsonformat/differ"
 	"github.com/hashicorp/terraform/internal/command/jsonplan"
 	"github.com/hashicorp/terraform/internal/command/jsonprovider"
 	viewsjson "github.com/hashicorp/terraform/internal/command/views/json"
 	"github.com/hashicorp/terraform/internal/plans"
 	"github.com/hashicorp/terraform/internal/terminal"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
 )
 
 type RendererOpt int
@@ -277,7 +279,7 @@ func (r Renderer) RenderHumanPlan(plan Plan, mode plans.Mode, opts ...RendererOp
 	}
 }
 
-func (r Renderer) RenderLog(log *JSONLog) {
+func (r Renderer) RenderLog(log *JSONLog) error {
 	switch log.Type {
 	case LogApplyStart, LogApplyComplete, LogRefreshStart, LogRefreshComplete:
 		msg := fmt.Sprintf("[bold]%s[reset]", log.Message)
@@ -289,7 +291,22 @@ func (r Renderer) RenderLog(log *JSONLog) {
 
 	case LogOutputs:
 		r.Streams.Println(r.Colorize.Color("[bold][green]Outputs:[reset]"))
-		// TODO
+		for name, output := range log.Outputs {
+			change := differ.FromJsonOutput(output)
+			ctype, err := ctyjson.UnmarshalType(output.Type)
+			if err != nil {
+				return err
+			}
+
+			outputDiff := change.ComputeDiffForType(ctype)
+			outputStr := outputDiff.RenderHuman(0, computed.RenderHumanOpts{
+				Colorize:              r.Colorize,
+				ShowUnchangedChildren: true,
+			})
+
+			msg := fmt.Sprintf("%s = %s", name, outputStr)
+			r.Streams.Println(r.Colorize.Color(msg))
+		}
 
 	case LogChangeSummary:
 		// We will only render the apply change summary since the renderer
@@ -302,6 +319,8 @@ func (r Renderer) RenderLog(log *JSONLog) {
 			r.Streams.Print("\n\n")
 		}
 	}
+
+	return nil
 }
 
 func (r Renderer) renderHumanDiffOutputs(outputs map[string]computed.Diff) string {

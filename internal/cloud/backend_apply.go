@@ -206,7 +206,10 @@ func (b *Cloud) renderApplyLogs(ctx context.Context, run *tfe.Run) error {
 
 				if b.renderer != nil {
 					// Otherwise, we will print the log
-					b.renderer.RenderLog(log)
+					err := b.renderer.RenderLog(log)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
