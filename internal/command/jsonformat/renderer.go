@@ -281,7 +281,7 @@ func (r Renderer) RenderHumanPlan(plan Plan, mode plans.Mode, opts ...RendererOp
 
 func (r Renderer) RenderLog(log *JSONLog) error {
 	switch log.Type {
-	case LogApplyStart, LogApplyComplete, LogRefreshStart, LogRefreshComplete:
+	case LogApplyStart, LogApplyComplete, LogRefreshStart:
 		msg := fmt.Sprintf("[bold]%s[reset]", log.Message)
 		r.Streams.Println(r.Colorize.Color(msg))
 
@@ -290,22 +290,24 @@ func (r Renderer) RenderLog(log *JSONLog) error {
 		r.Streams.Print(diag)
 
 	case LogOutputs:
-		r.Streams.Println(r.Colorize.Color("[bold][green]Outputs:[reset]"))
-		for name, output := range log.Outputs {
-			change := differ.FromJsonOutput(output)
-			ctype, err := ctyjson.UnmarshalType(output.Type)
-			if err != nil {
-				return err
+		if len(log.Outputs) > 0 {
+			r.Streams.Println(r.Colorize.Color("[bold][green]Outputs:[reset]"))
+			for name, output := range log.Outputs {
+				change := differ.FromJsonOutput(output)
+				ctype, err := ctyjson.UnmarshalType(output.Type)
+				if err != nil {
+					return err
+				}
+
+				outputDiff := change.ComputeDiffForType(ctype)
+				outputStr := outputDiff.RenderHuman(0, computed.RenderHumanOpts{
+					Colorize:              r.Colorize,
+					ShowUnchangedChildren: true,
+				})
+
+				msg := fmt.Sprintf("%s = %s", name, outputStr)
+				r.Streams.Println(r.Colorize.Color(msg))
 			}
-
-			outputDiff := change.ComputeDiffForType(ctype)
-			outputStr := outputDiff.RenderHuman(0, computed.RenderHumanOpts{
-				Colorize:              r.Colorize,
-				ShowUnchangedChildren: true,
-			})
-
-			msg := fmt.Sprintf("%s = %s", name, outputStr)
-			r.Streams.Println(r.Colorize.Color(msg))
 		}
 
 	case LogChangeSummary:
@@ -313,10 +315,7 @@ func (r Renderer) RenderLog(log *JSONLog) error {
 		// generates a plan change summary for us
 		if !strings.Contains(log.Message, "Plan") {
 			msg := fmt.Sprintf("[bold][green]%s[reset]", log.Message)
-			// TODO: Clean this up, was approximating the spacing using my eyes.
-			r.Streams.Print("\n")
-			r.Streams.Print(r.Colorize.Color(msg))
-			r.Streams.Print("\n\n")
+			r.Streams.Println("\n" + r.Colorize.Color(msg) + "\n")
 		}
 	}
 
