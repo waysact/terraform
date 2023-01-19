@@ -429,17 +429,27 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 				}
 			}
 		}
-
 	}
 
-	// Get a refreshed view of the workspace and
-	// check if structured run output is enabled.
-	ws, err := b.client.Workspaces.ReadByID(ctx, run.Workspace.ID)
+	// Get the run's current status and include the workspace. We will check if
+	// the run has errored and if structured output is enabled.
+	run, err = b.client.Runs.ReadWithOptions(ctx, run.ID, &tfe.RunReadOptions{
+		Include: []tfe.RunIncludeOpt{tfe.RunWorkspace},
+	})
 	if err != nil {
 		return err
 	}
 
-	if ws.StructuredRunOutputEnabled && b.renderer != nil {
+	// If the run was errored, canceled, or discarded we will not resume the rest
+	// of this logic and attempt to render the plan.
+	if run.Status == tfe.RunErrored || run.Status == tfe.RunCanceled ||
+		run.Status == tfe.RunDiscarded {
+		// We won't return an error here since we need to resume the logic that
+		// follows after rendering the logs (run tasks, cost estimation, etc.)
+		return nil
+	}
+
+	if run.Workspace.StructuredRunOutputEnabled && b.renderer != nil {
 		// Fetch the redacted plan.
 		redacted, err := b.readRedactedPlan(ctx, run.Plan.ID)
 		if err != nil {
