@@ -450,8 +450,12 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 	}
 
 	if run.Workspace.StructuredRunOutputEnabled && b.renderer != nil {
+		token, err := b.token()
+		if err != nil {
+			return err
+		}
 		// Fetch the redacted plan.
-		redacted, err := b.readRedactedPlan(ctx, run.Plan.ID)
+		redacted, err := readRedactedPlan(ctx, b.hostname, token, run.Plan.ID)
 		if err != nil {
 			return err
 		}

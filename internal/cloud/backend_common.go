@@ -544,22 +544,21 @@ func (b *Cloud) confirm(stopCtx context.Context, op *backend.Operation, opts *te
 	return <-result
 }
 
-func (b *Cloud) readRedactedPlan(ctx context.Context, planID string) (*jsonformat.Plan, error) {
+// This method will fetch the redacted plan output and marshal the response into
+// a struct the jsonformat.Renderer expects.
+//
+// Note: Apologies for the lengthy definition, this is a result of not being able to mock receiver methods
+var readRedactedPlan func(context.Context, string, string, string) (*jsonformat.Plan, error) = func(ctx context.Context, hostname, token, planID string) (*jsonformat.Plan, error) {
 	client := retryablehttp.NewClient()
 	client.RetryMax = 10
 	client.Logger = logging.HCLogger()
 
 	u := fmt.Sprintf("https://%s/api/v2/plans/%s/json-output-redacted",
-		url.QueryEscape(b.hostname),
+		url.QueryEscape(hostname),
 		url.QueryEscape(planID),
 	)
 
 	req, err := retryablehttp.NewRequest("GET", u, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := b.token()
 	if err != nil {
 		return nil, err
 	}
