@@ -392,8 +392,10 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 					continue
 				}
 
-				// We will ignore plan output or outputs logs during the plan phase
+				// We will ignore plan output, change summary or outputs logs
+				// during the plan phase.
 				if log.Type == jsonformat.LogOutputs ||
+					log.Type == jsonformat.LogChangeSummary ||
 					log.Type == jsonformat.LogPlannedChange {
 					continue
 				}

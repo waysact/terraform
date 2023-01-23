@@ -104,12 +104,13 @@ func FromJsonChange(change jsonplan.Change, relevantAttributes attribute_path.Ma
 
 func FromJsonOutput(output viewsjson.Output) Change {
 	return Change{
-		Before:          unmarshalGeneric(output.Value),
-		After:           unmarshalGeneric(output.Value),
-		Unknown:         false,
-		BeforeSensitive: output.Sensitive,
-		AfterSensitive:  output.Sensitive,
-		ReplacePaths:    replace.Parse(nil),
+		Before:             unmarshalGeneric(output.Value),
+		After:              unmarshalGeneric(output.Value),
+		Unknown:            false,
+		BeforeSensitive:    output.Sensitive,
+		AfterSensitive:     output.Sensitive,
+		ReplacePaths:       attribute_path.Empty(false),
+		RelevantAttributes: attribute_path.Empty(false),
 	}
 }
 

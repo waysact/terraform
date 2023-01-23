@@ -281,9 +281,13 @@ func (r Renderer) RenderHumanPlan(plan Plan, mode plans.Mode, opts ...RendererOp
 
 func (r Renderer) RenderLog(log *JSONLog) error {
 	switch log.Type {
+	case LogRefreshComplete, LogVersion, LogPlannedChange:
+		// We won't display these types of logs
+		return nil
+
 	case LogApplyStart, LogApplyComplete, LogRefreshStart:
-		msg := fmt.Sprintf("[bold]%s[reset]", log.Message)
-		r.Streams.Println(r.Colorize.Color(msg))
+		msg := fmt.Sprintf(r.Colorize.Color("[bold]%s[reset]"), log.Message)
+		r.Streams.Println(msg)
 
 	case LogDiagnostic:
 		diag := format.DiagnosticFromJSON(log.Diagnostic, r.Colorize, 78)
@@ -306,17 +310,19 @@ func (r Renderer) RenderLog(log *JSONLog) error {
 				})
 
 				msg := fmt.Sprintf("%s = %s", name, outputStr)
-				r.Streams.Println(r.Colorize.Color(msg))
+				r.Streams.Println(msg)
 			}
 		}
 
 	case LogChangeSummary:
 		// We will only render the apply change summary since the renderer
 		// generates a plan change summary for us
-		if !strings.Contains(log.Message, "Plan") {
-			msg := fmt.Sprintf("[bold][green]%s[reset]", log.Message)
-			r.Streams.Println("\n" + r.Colorize.Color(msg) + "\n")
-		}
+		msg := fmt.Sprintf(r.Colorize.Color("[bold][green]%s[reset]"), log.Message)
+		r.Streams.Println("\n" + msg + "\n")
+
+	default:
+		// If the log type is not a known log type, we will just print the log message
+		r.Streams.Println(log.Message)
 	}
 
 	return nil

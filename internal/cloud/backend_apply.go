@@ -200,7 +200,7 @@ func (b *Cloud) renderApplyLogs(ctx context.Context, run *tfe.Run) error {
 					// print the line. This maintains backwards compatibility for
 					// users who do not wish to enable structured output in their
 					// workspace.
-					b.CLI.Output(b.Colorize().Color(string(line)))
+					b.CLI.Output(string(line))
 					continue
 				}
 
