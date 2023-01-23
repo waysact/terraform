@@ -16,6 +16,7 @@ import (
 	"time"
 
 	tfe "github.com/hashicorp/go-tfe"
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform/internal/backend"
 	"github.com/hashicorp/terraform/internal/command/jsonformat"
 	"github.com/hashicorp/terraform/internal/plans"
@@ -426,7 +427,10 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 		return nil
 	}
 
-	if run.Workspace.StructuredRunOutputEnabled && b.renderer != nil {
+	// Given CLI-driven runs will silently disable SRO if the version is not supported,
+	// we need to ensure the workspace Terraform version is >=1.4.0 and has
+	// structured output enabled.
+	if satisfiesStructuredOutputTerraformVersion(run.Workspace) && b.renderer != nil {
 		token, err := b.token()
 		if err != nil {
 			return err
@@ -442,6 +446,25 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 	}
 
 	return nil
+}
+
+func satisfiesStructuredOutputTerraformVersion(workspace *tfe.Workspace) bool {
+	if workspace == nil {
+		return false
+	}
+
+	workspaceVersion, err := version.NewVersion(workspace.TerraformVersion)
+	if err != nil {
+		return false
+	}
+
+	desiredVersion, err := version.NewVersion("1.4.0")
+	if err != nil {
+		return false
+	}
+
+	return workspaceVersion.GreaterThanOrEqual(desiredVersion) &&
+		workspace.StructuredRunOutputEnabled
 }
 
 const planDefaultHeader = `
