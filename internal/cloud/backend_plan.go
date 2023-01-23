@@ -363,16 +363,6 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 
 	reader := bufio.NewReaderSize(logs, 64*1024)
 
-	// Since the plan output is not read from the streamed logs and instead fetched
-	// from the redacted output endpoint, we need to defer any logs such that the
-	// plan output is rendered *first* before we write any subsequent logs after the plan output.
-	deferredLogs := []*jsonformat.JSONLog{}
-
-	// This variable helps us track the first instance we encounter a log of type plan_output.
-	// When the plan has started, we should be deferring subsequent logs until after the plan
-	// has been rendered.
-	planStarted := false
-
 	if b.CLI != nil {
 		for next := true; next; {
 			var l, line []byte
@@ -397,26 +387,13 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 					// print the line. This maintains backwards compatibility for
 					// users who do not wish to enable structured output in their
 					// workspace.
-					b.CLI.Output(b.Colorize().Color(string(line)))
+					b.CLI.Output(string(line))
 					continue
 				}
 
-				// We will ignore outputs logs during the plan phase
-				if log.Type == jsonformat.LogOutputs {
-					continue
-				}
-
-				// We'll defer any log during a plan operation that is not
-				// plan output or outputs logs
-				if planStarted && log.Type != jsonformat.LogPlannedChange {
-					deferredLogs = append(deferredLogs, log)
-					continue
-				}
-
-				// If the log is plan output, we will indicate the plan has
-				// started and continue the loop.
-				if log.Type == jsonformat.LogPlannedChange {
-					planStarted = true
+				// We will ignore plan output or outputs logs during the plan phase
+				if log.Type == jsonformat.LogOutputs ||
+					log.Type == jsonformat.LogPlannedChange {
 					continue
 				}
 
@@ -462,14 +439,6 @@ func (b *Cloud) renderPlanLogs(ctx context.Context, op *backend.Operation, run *
 
 		// Render plan output.
 		b.renderer.RenderHumanPlan(*redacted, op.PlanMode)
-
-		// At this point we can resume writing the logs that succeeds the plan output.
-		for _, log := range deferredLogs {
-			err := b.renderer.RenderLog(log)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	return nil
