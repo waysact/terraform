@@ -7,9 +7,9 @@ description: >-
 
 # The `lifecycle` Meta-Argument
 
-> **Hands-on:** Try the [Lifecycle Management](https://learn.hashicorp.com/tutorials/terraform/resource-lifecycle?utm_source=WEBSITE&utm_medium=WEB_IO&utm_offer=ARTICLE_PAGE&utm_content=DOCS) tutorial.
+> **Hands-on:** Try the [Lifecycle Management](/terraform/tutorials/state/resource-lifecycle?utm_source=WEBSITE&utm_medium=WEB_IO&utm_offer=ARTICLE_PAGE&utm_content=DOCS) tutorial.
 
-The [Resource Behavior](/language/resources/behavior) page describes the general lifecycle for resources. Some details of
+The [Resource Behavior](/terraform/language/resources/behavior) page describes the general lifecycle for resources. Some details of
 that behavior can be customized using the special nested `lifecycle` block
 within a resource block body:
 
@@ -166,7 +166,7 @@ resource "aws_instance" "example" {
 
 Custom conditions can help capture assumptions, helping future maintainers understand the configuration design and intent. They also return useful information about errors earlier and in context, helping consumers more easily diagnose issues in their configurations.
 
-Refer to [Custom Conditions](/language/expressions/custom-conditions#preconditions-and-postconditions) for more details.
+Refer to [Custom Conditions](/terraform/language/expressions/custom-conditions#preconditions-and-postconditions) for more details.
 
 ## Literal Values Only
 

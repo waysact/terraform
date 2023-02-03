@@ -14,13 +14,13 @@ resource, you can associate them with a `null_resource`.
 
 Instances of [`null_resource`][null] are treated like normal resources, but they
 don't do anything. Like with any other resource, you can configure
-[provisioners](/language/resources/provisioners/syntax) and [connection
-details](/language/resources/provisioners/connection) on a `null_resource`. You can also
+[provisioners](/terraform/language/resources/provisioners/syntax) and [connection
+details](/terraform/language/resources/provisioners/connection) on a `null_resource`. You can also
 use its `triggers` argument and any meta-arguments to control exactly where in
 the dependency graph its provisioners will run.
 
 ~> **Important:** Use provisioners as a last resort. There are better alternatives for most situations. Refer to
-[Declaring Provisioners](/language/resources/provisioners/syntax) for more details.
+[Declaring Provisioners](/terraform/language/resources/provisioners/syntax) for more details.
 
 ## Example usage
 
